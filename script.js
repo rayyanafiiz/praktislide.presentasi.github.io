@@ -1352,7 +1352,7 @@ document.addEventListener("keydown", event => {
 async function downloadPPT() {
   if (!slides.length) return notify("Tambahkan minimal satu slide sebelum mengunduh.");
   if (typeof pptxgen === "undefined") {
-    return notify("Library PowerPoint belum termuat. Periksa koneksi internet.");
+    return notify("Library PowerPoint belum termuat. Muat ulang halaman; jika tetap gagal, periksa koneksi ke CDN.");
   }
 
   try {
