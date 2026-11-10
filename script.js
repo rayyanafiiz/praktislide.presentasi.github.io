@@ -1433,76 +1433,119 @@ async function downloadPPT() {
 }
 
 // ============================================
-// BAGIKAN PRESENTASI MELALUI TAUTAN MANDIRI
+// BAGIKAN PRESENTASI MELALUI SUPABASE STORAGE
 // ============================================
-function bytesToBase64Url(bytes) {
-  let binary = "";
-  for (let i=0;i<bytes.length;i+=0x8000) binary += String.fromCharCode(...bytes.subarray(i,i+0x8000));
-  return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
-}
-function base64UrlToBytes(value) {
-  const b64=value.replace(/-/g,"+").replace(/_/g,"/");
-  const binary=atob(b64+"=".repeat((4-b64.length%4)%4));
-  return Uint8Array.from(binary,c=>c.charCodeAt(0));
-}
-async function encodeSharePayload(data) {
-  const bytes=new TextEncoder().encode(JSON.stringify(data));
-  if ("CompressionStream" in window) {
-    const stream=new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
-    return bytesToBase64Url(new Uint8Array(await new Response(stream).arrayBuffer()));
+const SHARE_BUCKET = "praktislide-shares";
+const MAX_SHARE_BYTES = 15 * 1024 * 1024;
+
+function getSupabaseClient() {
+  if (!window.praktislideSupabase) {
+    throw new Error("Konfigurasi Supabase belum diisi. Lengkapi supabase-config.js.");
   }
-  return bytesToBase64Url(bytes);
+  return window.praktislideSupabase;
 }
-async function decodeSharePayload(encoded) {
-  const bytes=base64UrlToBytes(encoded);
-  let decoded=bytes;
-  if ("DecompressionStream" in window) {
-    try {
-      const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-      decoded=new Uint8Array(await new Response(stream).arrayBuffer());
-    } catch (_) {}
-  }
-  return JSON.parse(new TextDecoder().decode(decoded));
+
+function makeShareId() {
+  if (window.crypto?.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === "x" ? r : (r & 3 | 8)).toString(16);
+  });
 }
+
 async function sharePresentation() {
   if (!slides.length) return notify("Belum ada slide untuk dibagikan.");
+
   try {
-    const payload={version:1,title:projectTitle,slides,background:selectedBackground,element:selectedElement,font:selectedFont,layout:selectedLayout};
-    const encoded=await encodeSharePayload(payload);
-    if (encoded.length>28000) return notify("Presentasi terlalu besar untuk tautan langsung. Hapus atau kecilkan gambar, lalu coba lagi.");
-    const url=`${location.origin}${location.pathname}#share=${encoded}`;
-    if (navigator.share) await navigator.share({title:projectTitle,text:"Lihat presentasi Praktislide saya",url});
-    else if (navigator.clipboard?.writeText) {
+    const supabase = getSupabaseClient();
+    const payload = {
+      version: 2,
+      title: projectTitle || "Presentasi Praktislide",
+      slides,
+      background: selectedBackground,
+      element: selectedElement,
+      font: selectedFont,
+      layout: selectedLayout,
+      createdAt: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+    if (blob.size > MAX_SHARE_BYTES) {
+      return notify("Ukuran presentasi melebihi batas 15 MB. Kecilkan gambar atau hapus gambar yang tidak diperlukan.");
+    }
+
+    const shareId = makeShareId();
+    const filePath = `${shareId}.json`;
+    const { error: uploadError } = await supabase.storage
+      .from(SHARE_BUCKET)
+      .upload(filePath, blob, {
+        contentType: "application/json",
+        cacheControl: "3600",
+        upsert: false
+      });
+
+    if (uploadError) throw uploadError;
+
+    const url = `${location.origin}${location.pathname}#share=${shareId}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: payload.title,
+          text: "Lihat presentasi Praktislide saya",
+          url
+        });
+      } catch (shareError) {
+        if (shareError?.name === "AbortError") return;
+        throw shareError;
+      }
+    } else if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(url);
       notify("Tautan presentasi berhasil disalin. Kirim tautan itu kepada orang lain.");
-    } else window.prompt("Salin tautan presentasi ini:",url);
-  } catch(error) {
-    console.error("Gagal membagikan presentasi:",error);
-    notify("Tautan belum bisa dibuat. Coba lagi melalui browser yang mendukung fitur berbagi.");
+    } else {
+      window.prompt("Salin tautan presentasi ini:", url);
+    }
+  } catch (error) {
+    console.error("Gagal membagikan presentasi:", error);
+    const message = error?.message || "Periksa koneksi dan konfigurasi Supabase.";
+    notify(`Tautan gagal dibuat: ${message}`);
   }
 }
+
 async function loadSharedPresentation() {
-  const match=location.hash.match(/^#share=(.+)$/);
+  const match = location.hash.match(/^#share=([a-f0-9-]{20,})$/i);
   if (!match) return false;
+
   try {
-    const shared=await decodeSharePayload(match[1]);
-    if (!shared || shared.version!==1 || !Array.isArray(shared.slides) || !shared.slides.length) throw new Error("Data tautan tidak valid.");
-    projectTitle=shared.title || "Presentasi dibagikan";
-    slides=shared.slides;
-    selectedBackground=shared.background || defaultBackgrounds[0];
-    selectedElement=shared.element || defaultElements[0];
-    selectedFont=shared.font || defaultFonts[0];
-    selectedLayout=shared.layout || defaultLayouts[0];
-    currentProjectId=null;
-    previewIndex=0;
+    const supabase = getSupabaseClient();
+    const filePath = `${match[1]}.json`;
+    const { data } = supabase.storage.from(SHARE_BUCKET).getPublicUrl(filePath);
+    if (!data?.publicUrl) throw new Error("Alamat presentasi tidak ditemukan.");
+
+    const response = await fetch(data.publicUrl, { cache: "no-store" });
+    if (!response.ok) throw new Error("Presentasi tidak ditemukan atau tautannya sudah tidak tersedia.");
+
+    const shared = await response.json();
+    if (!shared || shared.version !== 2 || !Array.isArray(shared.slides) || !shared.slides.length) {
+      throw new Error("Data presentasi tidak valid.");
+    }
+
+    projectTitle = shared.title || "Presentasi dibagikan";
+    slides = shared.slides;
+    selectedBackground = shared.background || defaultBackgrounds[0];
+    selectedElement = shared.element || defaultElements[0];
+    selectedFont = shared.font || defaultFonts[0];
+    selectedLayout = shared.layout || defaultLayouts[0];
+    currentProjectId = null;
+    previewIndex = 0;
+
     await activateFont(selectedFont);
-    document.getElementById("previewTitle").textContent=projectTitle;
+    document.getElementById("previewTitle").textContent = projectTitle;
     renderPreview();
     showPage("preview");
     return true;
-  } catch(error) {
-    console.warn("Tautan berbagi tidak dapat dibuka:",error);
-    notify("Tautan presentasi tidak valid atau terpotong.");
+  } catch (error) {
+    console.warn("Tautan berbagi tidak dapat dibuka:", error);
+    notify(`Presentasi tidak dapat dibuka: ${error?.message || "Tautan tidak valid."}`);
     return false;
   }
 }
