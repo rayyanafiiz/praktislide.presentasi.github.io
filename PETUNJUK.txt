@@ -1,23 +1,9 @@
-PRAKTISLIDE - PERBAIKAN DOWNLOAD PPTX OFFLINE CDN
+PRAKTISLIDE - UPDATE KESESUAIAN PPTX
 
-Perbaikan:
-- Pustaka pembuat PowerPoint disimpan lokal di pptxgen.bundle.js.
-- index.html memuat file lokal tersebut, bukan mengambilnya dari CDN.
-- script.js menggunakan global PptxGenJS dari pustaka lokal.
+1. Ekstrak ZIP ini.
+2. Unggah SEMUA file langsung ke folder utama repository GitHub Pages.
+3. Ganti file lama: index.html, style.css, script.js, pptxgen.bundle.js.
+4. Commit changes dan tunggu GitHub Pages selesai memperbarui.
+5. Refresh Praktislide lalu coba unduh PPTX.
 
-Cara memasang di GitHub Pages:
-1. Buka repository GitHub Praktislide.
-2. Unggah/ganti SEMUA file dari folder ini ke folder utama (root) repository:
-   - index.html
-   - style.css
-   - script.js
-   - pptxgen.bundle.js
-3. Pastikan keempat file berada sejajar di folder yang sama.
-4. Commit perubahan.
-5. Tunggu GitHub Pages selesai memperbarui situs.
-6. Buka situs, lakukan refresh penuh, lalu coba unduh PPTX.
-
-Catatan:
-- File pptxgen.bundle.js adalah pustaka PptxGenJS berlisensi MIT.
-- Kode sumber sudah lolos pemeriksaan sintaks JavaScript dan pustaka berhasil membuat file PPTX dalam pengujian lokal Node.js.
-- Belum dilakukan pengujian interaksi langsung di browser Android / situs GitHub Pages.
+Perubahan utama: ekspor PowerPoint sekarang mengikuti proporsi pratinjau website: lebar konten, padding, perataan, judul slide pertama, dan pemusatan vertikal blok teks.

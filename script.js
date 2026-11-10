@@ -1352,169 +1352,175 @@ document.addEventListener("keydown", event => {
 async function downloadPPT() {
   if (!slides.length) return notify("Tambahkan minimal satu slide sebelum mengunduh.");
   if (typeof PptxGenJS === "undefined") {
-    return notify("Mesin PowerPoint lokal belum termuat. Pastikan file pptxgen.bundle.js ikut diunggah bersama file Praktislide.");
+    return notify("Mesin PowerPoint lokal belum termuat. Pastikan file pptxgen.bundle.js berada di folder yang sama dengan index.html.");
   }
 
   try {
     const pptx = new PptxGenJS();
-
     pptx.layout = "LAYOUT_WIDE";
     pptx.author = "Praktislide.Presentasi";
     pptx.subject = projectTitle;
     pptx.title = projectTitle;
     pptx.lang = "id-ID";
 
+    const SW = 13.333;
+    const SH = 7.5;
+    const PAD = SW * 0.07;             // sama dengan padding 7% pada .slide
+    const CONTENT_W = SW * 0.75;       // sama dengan lebar .slide-content 75%
+    const FONT_TITLE = 34.5;           // 46px CSS -> kira-kira 34.5pt
+    const FONT_SUB = 19.5;             // 26px CSS -> kira-kira 19.5pt
+    const FONT_BODY = 12.75;            // 17px CSS -> kira-kira 12.75pt
+
+    const estimateLines = (value, charsPerLine) => {
+      const lines = String(value || "").split("\n");
+      return lines.reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+    };
+
     for (let i = 0; i < slides.length; i++) {
       const data = slides[i];
       const slide = pptx.addSlide();
+      const layout = data.layout || "left";
+      const isCenter = layout === "center";
+      const isRight = layout === "right";
+      const align = isCenter ? "center" : isRight ? "right" : "left";
+      const dark = selectedBackground.color === "#242424";
+      const textColor = dark ? "FFFFFF" : "292626";
+      const bodyFont = selectedFont.body || "Arial";
+      const headingFont = selectedFont.heading || "Arial";
+      const subFont = selectedFont.subheading || bodyFont;
 
-      slide.background = { color: "FFFFFF" };
-
+      // Latar belakang sama dengan yang terlihat pada pratinjau website.
       if (selectedBackground.image) {
-        slide.addImage({
-          data: selectedBackground.image,
-          x: 0, y: 0, w: 13.333, h: 7.5
-        });
+        slide.addImage({ data: selectedBackground.image, x: 0, y: 0, w: SW, h: SH });
       } else {
-        slide.background = {
-          color: (selectedBackground.color || "#FFFFFF").replace("#","")
-        };
+        slide.background = { color: (selectedBackground.color || "#FFFFFF").replace("#", "") };
       }
 
+      // Hiasan sudut dipertahankan pada posisi dan ukuran relatif yang sama.
       if (selectedElement.corners) {
-        for (const [position,image] of Object.entries(selectedElement.corners)) {
-          const coordinates = {
-            tl: [0,0], tr: [11.75,0],
-            bl: [0,6.18], br: [11.75,6.18]
-          };
-
-          const [x,y] = coordinates[position];
-
-          slide.addImage({
-            data: image,
-            x, y, w: 1.55, h: 1.3,
-            sizingCrop: false
-          });
+        const cornerPositions = {
+          tl: [0, 0], tr: [SW - 1.87, 0],
+          bl: [0, SH - 1.05], br: [SW - 1.87, SH - 1.05]
+        };
+        for (const [position, image] of Object.entries(selectedElement.corners)) {
+          const pos = cornerPositions[position];
+          if (!pos || !image) continue;
+          slide.addImage({ data: image, x: pos[0], y: pos[1], w: 1.87, h: 1.05 });
         }
       }
 
-      const layout = data.layout || "left";
-      const align =
-        layout === "center" ? "center" :
-        layout === "right" ? "right" : "left";
+      // Di website, judul proyek adalah h1 pada slide pertama; judul slide
+      // menjadi h2 di bawahnya. Subtitle tetap menjadi h2 berikutnya.
+      const heading = i === 0 ? projectTitle : (data.title || "");
+      const introHeading = i === 0 ? (data.title || "") : "";
+      const subtitle = data.subtitle || "";
+      const body = String(data.body || "");
 
-      const dark = selectedBackground.color === "#242424";
-      const textColor = dark ? "FFFFFF" : "292626";
+      const pictureLayout = layout === "picture-left" || layout === "picture-right";
+      const hasPicture = pictureLayout && !!data.image;
+      const contentW = hasPicture ? SW * 0.48 : (layout.startsWith("columns") ? SW - 2 * PAD : CONTENT_W);
+      let contentX = PAD;
+      if (isCenter) contentX = (SW - contentW) / 2;
+      if (isRight) contentX = SW - PAD - contentW;
+      if (hasPicture && layout === "picture-left") contentX = SW * 0.52;
 
-      const title = i === 0 ? projectTitle : data.title;
+      // Perkiraan tinggi blok mengikuti ukuran teks di pratinjau, lalu
+      // seluruh blok dipusatkan vertikal (bukan dipatok mulai dari y=1.2).
+      let bodyLines = 1;
+      if (layout.startsWith("columns")) {
+        const count = Number(layout.replace("columns", "")) || 2;
+        const chunks = body.split(/\n\s*\n/).slice(0, count);
+        bodyLines = Math.max(1, ...chunks.map(part => estimateLines(part, 25)));
+      } else {
+        bodyLines = estimateLines(body, hasPicture ? 27 : 55);
+      }
+      const headingH = heading ? 0.78 : 0;
+      const introH = introHeading ? 0.48 : 0;
+      const subtitleH = subtitle ? 0.48 : 0;
+      const bodyH = Math.min(4.25, Math.max(0.55, bodyLines * 0.34));
+      const gaps = (heading ? 0.18 : 0) + (introHeading ? 0.12 : 0) + (subtitle ? 0.18 : 0);
+      const totalH = headingH + introH + subtitleH + bodyH + gaps;
+      let y = Math.max(PAD, (SH - totalH) / 2);
 
-      slide.addText(title, {
-        x: 0.8, y: 1.2, w: 11.7, h: 1.0,
-        fontFace: selectedFont.heading,
-        fontSize: 30,
-        bold: true,
-        color: textColor,
-        align
-      });
+      if (layout === "top") y = PAD;
 
-      if (data.subtitle) {
-        slide.addText(data.subtitle, {
-          x: 0.8, y: 2.3, w: 11.7, h: 0.6,
-          fontFace: selectedFont.subheading,
-          fontSize: 19,
-          color: textColor,
-          align
+      if (heading) {
+        slide.addText(heading, {
+          x: contentX, y, w: contentW, h: headingH,
+          fontFace: headingFont, fontSize: FONT_TITLE, bold: true,
+          color: textColor, align, valign: "mid", margin: 0,
+          breakLine: false, fit: "shrink"
         });
+        y += headingH + 0.18;
+      }
+      if (introHeading) {
+        slide.addText(introHeading, {
+          x: contentX, y, w: contentW, h: introH,
+          fontFace: subFont, fontSize: FONT_SUB, color: textColor,
+          align, valign: "mid", margin: 0, fit: "shrink"
+        });
+        y += introH + 0.12;
+      }
+      if (subtitle) {
+        slide.addText(subtitle, {
+          x: contentX, y, w: contentW, h: subtitleH,
+          fontFace: subFont, fontSize: FONT_SUB, color: textColor,
+          align, valign: "mid", margin: 0, fit: "shrink"
+        });
+        y += subtitleH + 0.18;
       }
 
-      const bodyY = data.subtitle ? 3.05 : 2.55;
-      if (layout.startsWith("picture") && data.image) {
-        const imageX = layout === "picture-left" ? 0.8 : 7.1;
-        const textX = layout === "picture-left" ? 6.8 : 0.8;
+      if (hasPicture) {
+        const imageX = layout === "picture-left" ? PAD : SW * 0.52;
+        slide.addImage({ data: data.image, x: imageX, y: Math.max(PAD, (SH - 5.6) / 2), w: SW * 0.44, h: 5.6, sizing: "contain" });
+      }
 
-        slide.addImage({
-          data: data.image,
-          x: imageX, y: bodyY, w: 5.3, h: 3.3,
-          sizingCrop: true
-        });
-
-        slide.addText(data.body, {
-          x: textX, y: bodyY, w: 5.4, h: 3.5,
-          fontFace: selectedFont.body,
-          fontSize: 17,
-          color: textColor,
-          valign: "mid",
-          breakLine: false
-        });
-      } else if (layout.startsWith("columns")) {
-        const count = Number(layout.replace("columns","")) || 2;
-        const parts = data.body.split(/\n\s*\n/);
-        const width = 11.7 / count;
-
-        parts.slice(0,count).forEach((part,index) => {
-          slide.addText(part, {
-            x: 0.8 + index * width,
-            y: bodyY,
-            w: width - 0.2,
-            h: 3.8,
-            fontFace: selectedFont.body,
-            fontSize: 16,
-            color: textColor,
-            valign: "top",
-            margin: 0.1
+      if (layout.startsWith("columns")) {
+        const count = Number(layout.replace("columns", "")) || 2;
+        const parts = body.split(/\n\s*\n/);
+        const colGap = 0.28;
+        const colW = (contentW - colGap * (count - 1)) / count;
+        for (let c = 0; c < count; c++) {
+          slide.addText(parts[c] || "", {
+            x: contentX + c * (colW + colGap), y, w: colW, h: bodyH,
+            fontFace: bodyFont, fontSize: FONT_BODY, color: textColor,
+            align: "left", valign: "top", margin: 0.02,
+            breakLine: false, paraSpaceAfterPt: 8, fit: "shrink"
           });
-        });
+        }
       } else if (layout.startsWith("points")) {
-        const lines = data.body.split("\n").filter(x => x.trim());
-        const style = data.pointStyle || "bullet";
-
-        const text = lines.map((line,index) => ({
-          text: (style === "number" ? `${index + 1}. ` : style === "dash" ? "- " : "• ") + line,
-          options: { breakLine: true }
+        const lines = body.split("\n").filter(line => line.trim());
+        const style = data.pointStyle || (layout === "points-number" ? "number" : layout === "points-dash" ? "dash" : "bullet");
+        const listText = lines.map((line, index) => ({
+          text: `${style === "number" ? `${index + 1}.` : style === "dash" ? "–" : "•"}  ${line}`,
+          options: { breakLine: index < lines.length - 1 }
         }));
-
-        slide.addText(text, {
-          x: 0.8, y: bodyY, w: 11.7, h: 3.8,
-          fontFace: selectedFont.body,
-          fontSize: 18,
-          color: textColor,
-          valign: "top"
+        slide.addText(listText, {
+          x: contentX, y, w: contentW, h: bodyH,
+          fontFace: bodyFont, fontSize: FONT_BODY, color: textColor,
+          align, valign: "top", margin: 0, paraSpaceAfterPt: 8, fit: "shrink"
         });
       } else {
-        slide.addText(data.body, {
-          x: 0.8, y: bodyY, w: 11.7, h: 3.8,
-          fontFace: selectedFont.body,
-          fontSize: 18,
-          color: textColor,
-          align,
-          valign: "top",
-          breakLine: false,
-          paraSpaceAfterPt: 12
+        slide.addText(body, {
+          x: contentX, y, w: contentW, h: bodyH,
+          fontFace: bodyFont, fontSize: FONT_BODY, color: textColor,
+          align, valign: "top", margin: 0, breakLine: false,
+          paraSpaceAfterPt: 8, fit: "shrink"
         });
       }
 
       slide.addText(String(i + 1), {
-        x: 12.1, y: 7.0, w: 0.5, h: 0.2,
-        fontSize: 9,
-        color: textColor,
-        align: "right"
+        x: SW - 0.85, y: SH - 0.48, w: 0.4, h: 0.2,
+        fontSize: 9, color: textColor, align: "right", margin: 0
       });
     }
 
     const safeTitle = (projectTitle || "Praktislide-Presentasi")
-      .replace(/[\\/:*?"<>|]/g, "-")
-      .trim() || "Praktislide-Presentasi";
+      .replace(/[\\/:*?"<>|]/g, "-").trim() || "Praktislide-Presentasi";
     const fileName = `${safeTitle}.pptx`;
-
-    // Ambil Blob langsung lalu unduh dengan anchor agar kompatibel dengan Chrome Android.
     const blob = await pptx.write({ outputType: "blob" });
-    if (!(blob instanceof Blob)) {
-      throw new Error("File PPTX tidak berhasil dibuat sebagai Blob.");
-    }
-
-    const typedBlob = new Blob([blob], {
-      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    });
+    if (!(blob instanceof Blob)) throw new Error("File PPTX tidak berhasil dibuat sebagai Blob.");
+    const typedBlob = new Blob([blob], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
     const url = URL.createObjectURL(typedBlob);
     const link = document.getElementById("pptxDownloadFallback");
     if (!link) throw new Error("Tombol unduh cadangan tidak ditemukan.");
@@ -1524,13 +1530,11 @@ async function downloadPPT() {
     link.download = fileName;
     link.hidden = false;
     link.textContent = `Unduh ${fileName}`;
-
-    // Coba mulai unduhan otomatis. Tautan tetap terlihat sebagai pilihan manual di HP.
     link.click();
-    notify("File PPTX sudah disiapkan. Jika unduhan tidak mulai otomatis, tekan tautan unduh yang muncul di bawah tombol.");
+    notify("PPTX berhasil disiapkan dengan tata letak yang lebih mendekati pratinjau Praktislide. Jika belum terunduh otomatis, tekan tautan unduh yang muncul.");
   } catch (error) {
     console.error("Ekspor PPTX gagal:", error);
-    notify(`PPTX gagal dibuat: ${error?.message || "Terjadi kesalahan"}. Pastikan koneksi internet aktif lalu coba lagi.`);
+    notify(`PPTX gagal dibuat: ${error?.message || "Terjadi kesalahan"}.`);
   }
 }
 
