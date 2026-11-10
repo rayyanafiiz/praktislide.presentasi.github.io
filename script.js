@@ -1351,12 +1351,12 @@ document.addEventListener("keydown", event => {
 
 async function downloadPPT() {
   if (!slides.length) return notify("Tambahkan minimal satu slide sebelum mengunduh.");
-  if (typeof pptxgen === "undefined") {
-    return notify("Library PowerPoint belum termuat. Muat ulang halaman; jika tetap gagal, periksa koneksi ke CDN.");
+  if (typeof PptxGenJS === "undefined") {
+    return notify("Mesin PowerPoint lokal belum termuat. Pastikan file pptxgen.bundle.js ikut diunggah bersama file Praktislide.");
   }
 
   try {
-    const pptx = new pptxgen();
+    const pptx = new PptxGenJS();
 
     pptx.layout = "LAYOUT_WIDE";
     pptx.author = "Praktislide.Presentasi";
