@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
   --red: #bd2633;
@@ -424,12 +424,18 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .slide.layout-center .slide-content { width: 85%; }
 .slide.layout-right { justify-content: flex-end; text-align: right; }
 .slide.layout-top { align-items: flex-start; }
-.slide.layout-picture.picture-left .slide-content,
-.slide.layout-picture.picture-right .slide-content { width: 48%; }
-.slide.layout-picture.picture-left .slide-image { order: -1; }
-.slide.layout-picture .slide-image { width: 44%; height: 75%; object-fit: cover; }
-.slide.layout-columns .slide-content { width: 100%; }
-.slide.layout-columns .column-content { display: grid; grid-template-columns: repeat(var(--columns,2), 1fr); gap: 20px; }
+.slide.layout-picture .slide-content { width: 48%; min-width: 0; }
+.slide.layout-picture .slide-image { display:block; flex:0 0 44%; width:44%; height:75%; max-height:75%; object-fit:cover; border-radius:10px; }
+.slide.layout-picture.picture-left .slide-content { order:2; }
+.slide.layout-picture.picture-left .slide-image { order:1; }
+.slide.layout-picture.picture-right .slide-content { order:1; }
+.slide.layout-picture.picture-right .slide-image { order:2; }
+.slide.layout-columns .slide-content { width:100%; min-width:0; }
+.slide.layout-columns .column-content { display:grid; width:100%; min-width:0; grid-template-columns:repeat(var(--columns,2),minmax(0,1fr)); gap:clamp(10px,2vw,24px); align-items:start; }
+.slide.layout-columns .column-content p { min-width:0; overflow-wrap:anywhere; }
+.slide.layout-columns3 .column-content { gap:clamp(8px,1.5vw,18px); }
+.slide.layout-columns4 .column-content { gap:clamp(6px,1vw,14px); }
+.slide.layout-columns4 .column-content p { font-size:clamp(9px,1.15vw,14px); line-height:1.5; }
 .slide.layout-points .slide-content { width: 85%; }
 .slide.layout-points p { margin-bottom: 12px; }
 
@@ -660,3 +666,18 @@ main { min-width:0; max-width:100%; }
 
 .pptx-download-link { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; font-weight:700; border:1px solid var(--red); color:var(--red); border-radius:8px; padding:11px 14px; background:#fff; }
 .pptx-download-link[hidden] { display:none; }
+
+/* Perbaikan layout slide, gambar, dan grid multi-kolom */
+.slide, .slide-content, .slide-image { min-width:0; }
+.slide-content { max-width:100%; }
+.slide.layout-picture { gap:3%; }
+.slide.layout-columns .column-content { align-items:start; }
+.slide.layout-columns .column-content p { white-space:pre-wrap; }
+@media(max-width:700px) {
+ .slide.layout-columns .column-content { gap:8px; }
+ .slide.layout-columns4 .column-content p { font-size:9px; line-height:1.35; }
+ .slide.layout-picture { gap:2%; }
+ .slide.layout-picture .slide-content { width:52%; }
+ .slide.layout-picture .slide-image { flex-basis:42%; width:42%; }
+}
+.pptx-render-stage { position:fixed; left:-20000px; top:0; z-index:-10; pointer-events:none; overflow:hidden; }

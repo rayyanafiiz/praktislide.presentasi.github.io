@@ -68,40 +68,44 @@ function notify(message) {
 // DATA BAWAAN
 // ============================================
 
+function decorativeCorner(kind, position) {
+  const palettes = {
+    ice: ["#8ED8F2", "#D9F5FF", "#5BA6D2"],
+    desert: ["#D8A45D", "#F4D7A1", "#B9793D"],
+    forest: ["#7BAA79", "#D4E8C8", "#386B4B"]
+  };
+  const [a,b,c] = palettes[kind] || palettes.ice;
+  const rotate = ({tl:0,tr:90,br:180,bl:270})[position] || 0;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><g transform="rotate(${rotate} 200 200)"><path d="M0 0H400V38C250 55 140 120 38 400H0Z" fill="${a}" opacity=".82"/><path d="M0 0H300C180 45 90 125 0 300Z" fill="${b}" opacity=".9"/><path d="M0 0L180 0L0 180Z" fill="${c}" opacity=".72"/><path d="M20 20Q160 65 65 205" fill="none" stroke="#FFFFFF" stroke-width="8" opacity=".7"/><circle cx="82" cy="82" r="13" fill="#FFFFFF" opacity=".8"/></g></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+function makeElementPack(id,name,kind) {
+  return {id,name,corners:Object.fromEntries(["tl","tr","bl","br"].map(pos=>[pos,decorativeCorner(kind,pos)]))};
+}
 const defaultBackgrounds = [
-  { id: "bg-white", name: "Putih Bersih", color: "#FFFFFF" },
-  { id: "bg-cream", name: "Cream", color: "#F2EADF" },
-  { id: "bg-red", name: "Soft Red", color: "#F8E7E7" },
-  { id: "bg-dark", name: "Dark", color: "#242424" }
+  {id:"bg-white",name:"Putih Bersih",color:"#FFFFFF"},
+  {id:"bg-cream",name:"Cream",color:"#F2EADF"},
+  {id:"bg-blue-white",name:"Putih Kebiruan",color:"#EEF5FB"},
+  {id:"bg-gold-white",name:"Putih Keemasan",color:"#FBF5E8"},
+  {id:"bg-green-white",name:"Putih Kehijauan",color:"#EFF6EE"},
+  {id:"bg-red",name:"Soft Red",color:"#F8E7E7"},
+  {id:"bg-dark",name:"Dark",color:"#242424"}
 ];
-
 const defaultElements = [
-  { id: "el-none", name: "Tanpa Elemen", corners: {} },
-  { id: "el-red", name: "Merah Minimalis", corners: {} }
+  {id:"el-none",name:"Tanpa Elemen",corners:{}},
+  makeElementPack("el-ice","Ice","ice"),
+  makeElementPack("el-desert","Desert","desert"),
+  makeElementPack("el-forest","Forest","forest"),
+  {id:"el-red",name:"Merah Minimalis",corners:{}}
 ];
-
 const defaultFonts = [
-  {
-    id: "font-modern",
-    name: "Modern",
-    heading: "Plus Jakarta Sans",
-    subheading: "DM Sans",
-    body: "DM Sans"
-  },
-  {
-    id: "font-classic",
-    name: "Klasik",
-    heading: "Georgia",
-    subheading: "Arial",
-    body: "Arial"
-  },
-  {
-    id: "font-clean",
-    name: "Sederhana",
-    heading: "Arial",
-    subheading: "Arial",
-    body: "Arial"
-  }
+  {id:"font-modern",name:"Modern",heading:"Plus Jakarta Sans",subheading:"DM Sans",body:"DM Sans"},
+  {id:"font-classic",name:"Klasik",heading:"Playfair Display",subheading:"Lora",body:"Lora"},
+  {id:"font-clean",name:"Bersih",heading:"Montserrat",subheading:"Montserrat",body:"Montserrat"},
+  {id:"font-rounded",name:"Rounded",heading:"Poppins",subheading:"Poppins",body:"Poppins"},
+  {id:"font-tech",name:"Tech",heading:"Space Grotesk",subheading:"DM Sans",body:"DM Sans"},
+  {id:"font-editorial",name:"Editorial",heading:"Lora",subheading:"Playfair Display",body:"Lora"},
+  {id:"font-outfit",name:"Outfit",heading:"Outfit",subheading:"Outfit",body:"Outfit"}
 ];
 
 const defaultLayouts = [
@@ -922,7 +926,7 @@ function renderSlideEditor() {
       <div class="form-group">
         <label>Materi (pisahkan setiap kolom dengan satu baris kosong)</label>
         <textarea id="slideBody" rows="9"
-          placeholder="Kolom pertama&#10;&#10;Kolom kedua">${escapeHTML(slides[activeSlide].body)}</textarea>
+          placeholder="Kolom pertama&#10;&#10;Kolom kedua&#10;&#10;Kolom ketiga&#10;&#10;Kolom keempat">${escapeHTML(slides[activeSlide].body)}</textarea>
       </div>
     `;
   } else if (layout.startsWith("picture")) {
@@ -1090,7 +1094,7 @@ function renderSlide(slide,index) {
     `).join("");
   } else if (layout.startsWith("columns")) {
     const count = Number(layout.replace("columns","")) || 2;
-    const items = body.split(/\n\s*\n/);
+    const items = body.split(/\n\s*\n/).map(item => item.trim()).filter(Boolean);
 
     content = `
       <div class="column-content" style="--columns:${count}">
@@ -1109,8 +1113,15 @@ function renderSlide(slide,index) {
     image = `<img class="slide-image" src="${slide.image}" alt="Gambar materi">`;
   }
 
+  const layoutClasses = [
+    `layout-${layout}`,
+    layout.startsWith("columns") ? "layout-columns" : "",
+    layout.startsWith("points") ? "layout-points" : "",
+    layout.startsWith("picture") ? `layout-picture ${layout}` : ""
+  ].filter(Boolean).join(" ");
+
   return `
-    <article class="slide layout-${layout}"
+    <article class="slide ${layoutClasses}"
       style="${getBackgroundStyle()};
       font-family:'${escapeHTML(font.body)}',Arial,sans-serif">
 
@@ -1351,11 +1362,18 @@ document.addEventListener("keydown", event => {
 
 async function downloadPPT() {
   if (!slides.length) return notify("Tambahkan minimal satu slide sebelum mengunduh.");
-  if (typeof PptxGenJS === "undefined") {
-    return notify("Mesin PowerPoint lokal belum termuat. Pastikan file pptxgen.bundle.js berada di folder yang sama dengan index.html.");
-  }
+  if (typeof PptxGenJS === "undefined") return notify("Mesin PowerPoint lokal belum termuat. Pastikan pptxgen.bundle.js berada di folder yang sama.");
+  if (typeof html2canvas === "undefined") return notify("Mesin render slide belum termuat. Periksa koneksi internet lalu muat ulang halaman.");
 
+  const button = document.getElementById("downloadPptButton");
+  if (button) { button.disabled = true; button.textContent = "Menyiapkan PPTX..."; }
+  let stage;
   try {
+    await document.fonts.ready;
+    const currentSlide = document.querySelector("#slidePreview .slide");
+    const measuredWidth = currentSlide?.getBoundingClientRect().width || 1280;
+    const renderWidth = Math.max(320, Math.round(measuredWidth));
+    const renderHeight = Math.round(renderWidth * 9 / 16);
     const pptx = new PptxGenJS();
     pptx.layout = "LAYOUT_WIDE";
     pptx.author = "Praktislide.Presentasi";
@@ -1363,182 +1381,132 @@ async function downloadPPT() {
     pptx.title = projectTitle;
     pptx.lang = "id-ID";
 
-    const SW = 13.333;
-    const SH = 7.5;
-    const PAD = SW * 0.07;             // sama dengan padding 7% pada .slide
-    const CONTENT_W = SW * 0.75;       // sama dengan lebar .slide-content 75%
-    const FONT_TITLE = 34.5;           // 46px CSS -> kira-kira 34.5pt
-    const FONT_SUB = 19.5;             // 26px CSS -> kira-kira 19.5pt
-    const FONT_BODY = 12.75;            // 17px CSS -> kira-kira 12.75pt
-
-    const estimateLines = (value, charsPerLine) => {
-      const lines = String(value || "").split("\n");
-      return lines.reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
-    };
+    stage = document.createElement("div");
+    stage.className = "pptx-render-stage";
+    stage.style.width = `${renderWidth}px`;
+    stage.style.height = `${renderHeight}px`;
+    document.body.appendChild(stage);
 
     for (let i = 0; i < slides.length; i++) {
-      const data = slides[i];
-      const slide = pptx.addSlide();
-      const layout = data.layout || "left";
-      const isCenter = layout === "center";
-      const isRight = layout === "right";
-      const align = isCenter ? "center" : isRight ? "right" : "left";
-      const dark = selectedBackground.color === "#242424";
-      const textColor = dark ? "FFFFFF" : "292626";
-      const bodyFont = selectedFont.body || "Arial";
-      const headingFont = selectedFont.heading || "Arial";
-      const subFont = selectedFont.subheading || bodyFont;
+      stage.innerHTML = renderSlide(slides[i], i);
+      const node = stage.querySelector(".slide");
+      node.style.width = `${renderWidth}px`;
+      node.style.height = `${renderHeight}px`;
+      node.style.aspectRatio = "16 / 9";
+      node.style.boxSizing = "border-box";
 
-      // Latar belakang sama dengan yang terlihat pada pratinjau website.
-      if (selectedBackground.image) {
-        slide.addImage({ data: selectedBackground.image, x: 0, y: 0, w: SW, h: SH });
-      } else {
-        slide.background = { color: (selectedBackground.color || "#FFFFFF").replace("#", "") };
-      }
-
-      // Hiasan sudut dipertahankan pada posisi dan ukuran relatif yang sama.
-      if (selectedElement.corners) {
-        const cornerPositions = {
-          tl: [0, 0], tr: [SW - 1.87, 0],
-          bl: [0, SH - 1.05], br: [SW - 1.87, SH - 1.05]
-        };
-        for (const [position, image] of Object.entries(selectedElement.corners)) {
-          const pos = cornerPositions[position];
-          if (!pos || !image) continue;
-          slide.addImage({ data: image, x: pos[0], y: pos[1], w: 1.87, h: 1.05 });
-        }
-      }
-
-      // Di website, judul proyek adalah h1 pada slide pertama; judul slide
-      // menjadi h2 di bawahnya. Subtitle tetap menjadi h2 berikutnya.
-      const heading = i === 0 ? projectTitle : (data.title || "");
-      const introHeading = i === 0 ? (data.title || "") : "";
-      const subtitle = data.subtitle || "";
-      const body = String(data.body || "");
-
-      const pictureLayout = layout === "picture-left" || layout === "picture-right";
-      const hasPicture = pictureLayout && !!data.image;
-      const contentW = hasPicture ? SW * 0.48 : (layout.startsWith("columns") ? SW - 2 * PAD : CONTENT_W);
-      let contentX = PAD;
-      if (isCenter) contentX = (SW - contentW) / 2;
-      if (isRight) contentX = SW - PAD - contentW;
-      if (hasPicture && layout === "picture-left") contentX = SW * 0.52;
-
-      // Perkiraan tinggi blok mengikuti ukuran teks di pratinjau, lalu
-      // seluruh blok dipusatkan vertikal (bukan dipatok mulai dari y=1.2).
-      let bodyLines = 1;
-      if (layout.startsWith("columns")) {
-        const count = Number(layout.replace("columns", "")) || 2;
-        const chunks = body.split(/\n\s*\n/).slice(0, count);
-        bodyLines = Math.max(1, ...chunks.map(part => estimateLines(part, 25)));
-      } else {
-        bodyLines = estimateLines(body, hasPicture ? 27 : 55);
-      }
-      const headingH = heading ? 0.78 : 0;
-      const introH = introHeading ? 0.48 : 0;
-      const subtitleH = subtitle ? 0.48 : 0;
-      const bodyH = Math.min(4.25, Math.max(0.55, bodyLines * 0.34));
-      const gaps = (heading ? 0.18 : 0) + (introHeading ? 0.12 : 0) + (subtitle ? 0.18 : 0);
-      const totalH = headingH + introH + subtitleH + bodyH + gaps;
-      let y = Math.max(PAD, (SH - totalH) / 2);
-
-      if (layout === "top") y = PAD;
-
-      if (heading) {
-        slide.addText(heading, {
-          x: contentX, y, w: contentW, h: headingH,
-          fontFace: headingFont, fontSize: FONT_TITLE, bold: true,
-          color: textColor, align, valign: "mid", margin: 0,
-          breakLine: false, fit: "shrink"
-        });
-        y += headingH + 0.18;
-      }
-      if (introHeading) {
-        slide.addText(introHeading, {
-          x: contentX, y, w: contentW, h: introH,
-          fontFace: subFont, fontSize: FONT_SUB, color: textColor,
-          align, valign: "mid", margin: 0, fit: "shrink"
-        });
-        y += introH + 0.12;
-      }
-      if (subtitle) {
-        slide.addText(subtitle, {
-          x: contentX, y, w: contentW, h: subtitleH,
-          fontFace: subFont, fontSize: FONT_SUB, color: textColor,
-          align, valign: "mid", margin: 0, fit: "shrink"
-        });
-        y += subtitleH + 0.18;
-      }
-
-      if (hasPicture) {
-        const imageX = layout === "picture-left" ? PAD : SW * 0.52;
-        slide.addImage({ data: data.image, x: imageX, y: Math.max(PAD, (SH - 5.6) / 2), w: SW * 0.44, h: 5.6, sizing: "contain" });
-      }
-
-      if (layout.startsWith("columns")) {
-        const count = Number(layout.replace("columns", "")) || 2;
-        const parts = body.split(/\n\s*\n/);
-        const colGap = 0.28;
-        const colW = (contentW - colGap * (count - 1)) / count;
-        for (let c = 0; c < count; c++) {
-          slide.addText(parts[c] || "", {
-            x: contentX + c * (colW + colGap), y, w: colW, h: bodyH,
-            fontFace: bodyFont, fontSize: FONT_BODY, color: textColor,
-            align: "left", valign: "top", margin: 0.02,
-            breakLine: false, paraSpaceAfterPt: 8, fit: "shrink"
-          });
-        }
-      } else if (layout.startsWith("points")) {
-        const lines = body.split("\n").filter(line => line.trim());
-        const style = data.pointStyle || (layout === "points-number" ? "number" : layout === "points-dash" ? "dash" : "bullet");
-        const listText = lines.map((line, index) => ({
-          text: `${style === "number" ? `${index + 1}.` : style === "dash" ? "–" : "•"}  ${line}`,
-          options: { breakLine: index < lines.length - 1 }
-        }));
-        slide.addText(listText, {
-          x: contentX, y, w: contentW, h: bodyH,
-          fontFace: bodyFont, fontSize: FONT_BODY, color: textColor,
-          align, valign: "top", margin: 0, paraSpaceAfterPt: 8, fit: "shrink"
-        });
-      } else {
-        slide.addText(body, {
-          x: contentX, y, w: contentW, h: bodyH,
-          fontFace: bodyFont, fontSize: FONT_BODY, color: textColor,
-          align, valign: "top", margin: 0, breakLine: false,
-          paraSpaceAfterPt: 8, fit: "shrink"
-        });
-      }
-
-      slide.addText(String(i + 1), {
-        x: SW - 0.85, y: SH - 0.48, w: 0.4, h: 0.2,
-        fontSize: 9, color: textColor, align: "right", margin: 0
+      await Promise.all(Array.from(node.querySelectorAll("img")).map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+      }));
+      const canvas = await html2canvas(node, {
+        backgroundColor: null, scale: 2, useCORS: true, allowTaint: false,
+        logging: false, width: renderWidth, height: renderHeight,
+        windowWidth: Math.max(window.innerWidth, renderWidth),
+        windowHeight: Math.max(window.innerHeight, renderHeight)
       });
+      const pptSlide = pptx.addSlide();
+      pptSlide.addImage({data:canvas.toDataURL("image/png"),x:0,y:0,w:13.333333,h:7.5});
     }
 
-    const safeTitle = (projectTitle || "Praktislide-Presentasi")
-      .replace(/[\\/:*?"<>|]/g, "-").trim() || "Praktislide-Presentasi";
-    const fileName = `${safeTitle}.pptx`;
-    const blob = await pptx.write({ outputType: "blob" });
-    if (!(blob instanceof Blob)) throw new Error("File PPTX tidak berhasil dibuat sebagai Blob.");
-    const typedBlob = new Blob([blob], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
-    const url = URL.createObjectURL(typedBlob);
+    const safeTitle = (projectTitle || "Praktislide-Presentasi").replace(/[\\/:*?"<>|]/g,"-").trim() || "Praktislide-Presentasi";
+    const blob = await pptx.write({outputType:"blob"});
+    if (!(blob instanceof Blob)) throw new Error("File PPTX tidak berhasil dibuat.");
+    const url = URL.createObjectURL(new Blob([blob],{type:"application/vnd.openxmlformats-officedocument.presentationml.presentation"}));
     const link = document.getElementById("pptxDownloadFallback");
-    if (!link) throw new Error("Tombol unduh cadangan tidak ditemukan.");
+    if (!link) throw new Error("Tautan unduh cadangan tidak ditemukan.");
     if (window.lastPptxObjectUrl) URL.revokeObjectURL(window.lastPptxObjectUrl);
     window.lastPptxObjectUrl = url;
     link.href = url;
-    link.download = fileName;
+    link.download = `${safeTitle}.pptx`;
     link.hidden = false;
-    link.textContent = `Unduh ${fileName}`;
+    link.textContent = `Unduh ${safeTitle}.pptx`;
     link.click();
-    notify("PPTX berhasil disiapkan dengan tata letak yang lebih mendekati pratinjau Praktislide. Jika belum terunduh otomatis, tekan tautan unduh yang muncul.");
+    notify("PPTX berhasil dibuat. Setiap slide disimpan sebagai gambar agar tampilannya mengikuti pratinjau website.");
   } catch (error) {
-    console.error("Ekspor PPTX gagal:", error);
+    console.error("Ekspor PPTX gagal:",error);
     notify(`PPTX gagal dibuat: ${error?.message || "Terjadi kesalahan"}.`);
+  } finally {
+    if (stage) stage.remove();
+    if (button) { button.disabled = false; button.textContent = "↓ Download PPTX"; }
   }
 }
 
 // ============================================
+// BAGIKAN PRESENTASI MELALUI TAUTAN MANDIRI
+// ============================================
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  for (let i=0;i<bytes.length;i+=0x8000) binary += String.fromCharCode(...bytes.subarray(i,i+0x8000));
+  return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
+}
+function base64UrlToBytes(value) {
+  const b64=value.replace(/-/g,"+").replace(/_/g,"/");
+  const binary=atob(b64+"=".repeat((4-b64.length%4)%4));
+  return Uint8Array.from(binary,c=>c.charCodeAt(0));
+}
+async function encodeSharePayload(data) {
+  const bytes=new TextEncoder().encode(JSON.stringify(data));
+  if ("CompressionStream" in window) {
+    const stream=new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+    return bytesToBase64Url(new Uint8Array(await new Response(stream).arrayBuffer()));
+  }
+  return bytesToBase64Url(bytes);
+}
+async function decodeSharePayload(encoded) {
+  const bytes=base64UrlToBytes(encoded);
+  let decoded=bytes;
+  if ("DecompressionStream" in window) {
+    try {
+      const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+      decoded=new Uint8Array(await new Response(stream).arrayBuffer());
+    } catch (_) {}
+  }
+  return JSON.parse(new TextDecoder().decode(decoded));
+}
+async function sharePresentation() {
+  if (!slides.length) return notify("Belum ada slide untuk dibagikan.");
+  try {
+    const payload={version:1,title:projectTitle,slides,background:selectedBackground,element:selectedElement,font:selectedFont,layout:selectedLayout};
+    const encoded=await encodeSharePayload(payload);
+    if (encoded.length>28000) return notify("Presentasi terlalu besar untuk tautan langsung. Hapus atau kecilkan gambar, lalu coba lagi.");
+    const url=`${location.origin}${location.pathname}#share=${encoded}`;
+    if (navigator.share) await navigator.share({title:projectTitle,text:"Lihat presentasi Praktislide saya",url});
+    else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      notify("Tautan presentasi berhasil disalin. Kirim tautan itu kepada orang lain.");
+    } else window.prompt("Salin tautan presentasi ini:",url);
+  } catch(error) {
+    console.error("Gagal membagikan presentasi:",error);
+    notify("Tautan belum bisa dibuat. Coba lagi melalui browser yang mendukung fitur berbagi.");
+  }
+}
+async function loadSharedPresentation() {
+  const match=location.hash.match(/^#share=(.+)$/);
+  if (!match) return false;
+  try {
+    const shared=await decodeSharePayload(match[1]);
+    if (!shared || shared.version!==1 || !Array.isArray(shared.slides) || !shared.slides.length) throw new Error("Data tautan tidak valid.");
+    projectTitle=shared.title || "Presentasi dibagikan";
+    slides=shared.slides;
+    selectedBackground=shared.background || defaultBackgrounds[0];
+    selectedElement=shared.element || defaultElements[0];
+    selectedFont=shared.font || defaultFonts[0];
+    selectedLayout=shared.layout || defaultLayouts[0];
+    currentProjectId=null;
+    previewIndex=0;
+    await activateFont(selectedFont);
+    document.getElementById("previewTitle").textContent=projectTitle;
+    renderPreview();
+    showPage("preview");
+    return true;
+  } catch(error) {
+    console.warn("Tautan berbagi tidak dapat dibuka:",error);
+    notify("Tautan presentasi tidak valid atau terpotong.");
+    return false;
+  }
+}
+
 // AWAL APLIKASI
 // ============================================
 
@@ -1550,8 +1518,8 @@ async function initialize() {
     await renderHome();
     await renderWizard();
     updateHistoryButtons();
-
-    console.log("Praktislide berhasil dijalankan.");
+    const sharedLoaded = await loadSharedPresentation();
+    if (!sharedLoaded) console.log("Praktislide berhasil dijalankan.");
   } catch (error) {
     console.error(error);
     notify("Database browser tidak dapat dibuka. Coba gunakan Chrome dengan Live Server.");

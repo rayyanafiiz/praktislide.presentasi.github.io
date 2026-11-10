@@ -231,6 +231,7 @@
     <div class="export-bar">
       <button class="secondary" onclick="saveProject()">Simpan proyek</button>
       <button class="secondary" onclick="startSlideshow()">Tampilkan layar penuh</button>
+      <button class="secondary" onclick="sharePresentation()">↗ Bagikan tautan</button>
       <button class="primary" id="downloadPptButton" onclick="downloadPPT()">↓ Download PPTX</button>
       <a id="pptxDownloadFallback" class="secondary pptx-download-link" hidden>Unduh PPTX jika belum terunduh</a>
     </div>
@@ -285,6 +286,7 @@
   <div class="screen-counter" id="screenCounter"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

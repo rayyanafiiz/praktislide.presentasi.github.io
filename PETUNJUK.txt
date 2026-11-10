@@ -1,9 +1,13 @@
-PRAKTISLIDE - UPDATE KESESUAIAN PPTX
+PRAKTISLIDE - VERSI REVISI
 
-1. Ekstrak ZIP ini.
+1. Ekstrak ZIP.
 2. Unggah SEMUA file langsung ke folder utama repository GitHub Pages.
 3. Ganti file lama: index.html, style.css, script.js, pptxgen.bundle.js.
 4. Commit changes dan tunggu GitHub Pages selesai memperbarui.
-5. Refresh Praktislide lalu coba unduh PPTX.
+5. Buka website dan uji background, elemen, font, layout, berbagi tautan, dan ekspor PPTX.
 
-Perubahan utama: ekspor PowerPoint sekarang mengikuti proporsi pratinjau website: lebar konten, padding, perataan, judul slide pertama, dan pemusatan vertikal blok teks.
+CATATAN FITUR
+- Ekspor PPTX menggunakan gambar setiap slide agar tampilannya mengikuti pratinjau website. Objek di PowerPoint tidak bisa diedit satu per satu.
+- Ekspor visual memakai html2canvas dari CDN jsDelivr, jadi perlu koneksi internet saat membuka aplikasi dan mengekspor.
+- Tautan berbagi menyimpan data presentasi terkompresi di URL. Ini bukan penyimpanan cloud seperti Canva dan tautannya bisa panjang. Jika ukuran terlalu besar, kecilkan/hapus gambar sebelum membagikan.
+- Paket font menggunakan Google Fonts, sehingga font tambahan dimuat melalui internet.
