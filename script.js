@@ -138,6 +138,102 @@ let managerTab = "backgrounds";
 let selectedPicture = null;
 let slideshowIndex = 0;
 
+// Riwayat perubahan untuk fitur Urungkan / Ulangi.
+let undoStack = [];
+let redoStack = [];
+let historyRestoring = false;
+const HISTORY_LIMIT = 60;
+
+function cloneState(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function captureAppState() {
+  return cloneState({
+    selectedBackground, selectedElement, selectedFont, selectedLayout,
+    currentStep, activeSlide, previewIndex, slides, currentProjectId, projectTitle
+  });
+}
+
+function updateHistoryButtons() {
+  const undoEnabled = undoStack.length > 0;
+  const redoEnabled = redoStack.length > 0;
+  ["undoButton", "undoButtonPreview", "undoButtonBuilder"].forEach(id => {
+    const button = document.getElementById(id);
+    if (button) button.disabled = !undoEnabled;
+  });
+  ["redoButton", "redoButtonPreview", "redoButtonBuilder"].forEach(id => {
+    const button = document.getElementById(id);
+    if (button) button.disabled = !redoEnabled;
+  });
+}
+
+function recordUndoState() {
+  if (historyRestoring) return;
+  undoStack.push(captureAppState());
+  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+  redoStack = [];
+  updateHistoryButtons();
+}
+
+async function restoreAppState(state) {
+  historyRestoring = true;
+  try {
+  selectedBackground = state.selectedBackground || defaultBackgrounds[0];
+  selectedElement = state.selectedElement || defaultElements[0];
+  selectedFont = state.selectedFont || defaultFonts[0];
+  selectedLayout = state.selectedLayout || defaultLayouts[0];
+  currentStep = state.currentStep ?? 0;
+  activeSlide = state.activeSlide ?? 0;
+  previewIndex = state.previewIndex ?? 0;
+  slides = state.slides || [];
+  currentProjectId = state.currentProjectId || null;
+  projectTitle = state.projectTitle || "Presentasi Baru";
+  activeSlide = Math.max(0, Math.min(activeSlide, Math.max(0, slides.length - 1)));
+  previewIndex = Math.max(0, Math.min(previewIndex, Math.max(0, slides.length - 1)));
+
+  await activateFont(selectedFont);
+  const activePage = document.querySelector(".page.active")?.id;
+  if (activePage === "builder") await renderWizard();
+  if (activePage === "editor" && slides.length) {
+    document.getElementById("projectTitle").value = projectTitle;
+    renderSlideEditor();
+  }
+  if (activePage === "preview" && slides.length) {
+    document.getElementById("previewTitle").textContent = projectTitle;
+    renderPreview();
+  }
+  } finally {
+    historyRestoring = false;
+    updateHistoryButtons();
+  }
+}
+
+async function undoAction() {
+  if (!undoStack.length) return;
+  redoStack.push(captureAppState());
+  const previous = undoStack.pop();
+  await restoreAppState(previous);
+}
+
+async function redoAction() {
+  if (!redoStack.length) return;
+  undoStack.push(captureAppState());
+  const next = redoStack.pop();
+  await restoreAppState(next);
+}
+
+// Simpan satu titik riwayat saat pengguna mulai mengedit kolom teks.
+document.addEventListener("focusin", event => {
+  if (event.target.matches("#slideTitle, #slideSubtitle, #slideBody, #pointStyle, #projectTitle")) {
+    recordUndoState();
+  }
+}, true);
+
+document.addEventListener("input", event => {
+  if (event.target?.id === "projectTitle") projectTitle = event.target.value;
+});
+
 // ============================================
 // NAVIGASI
 // ============================================
@@ -177,6 +273,9 @@ function startNew() {
   selectedLayout = defaultLayouts[0];
 
   slides = [];
+  undoStack = [];
+  redoStack = [];
+  updateHistoryButtons();
 
   activeSlide = 0;
   currentStep = 0;
@@ -396,6 +495,7 @@ function renderLayouts() {
 }
 
 function addSlidesWithLayout(layoutId) {
+  recordUndoState();
   const layout = defaultLayouts.find(item => item.id === layoutId);
   if (!layout) return;
   slides.push({
@@ -434,11 +534,13 @@ function renderLayoutRail() {
 function moveRailCar(index, direction) {
   const target = index + direction;
   if (target < 0 || target >= slides.length) return;
+  recordUndoState();
   [slides[index], slides[target]] = [slides[target], slides[index]];
   renderLayoutRail();
 }
 
 function removeRailCar(index) {
+  recordUndoState();
   slides.splice(index, 1);
   renderLayoutRail();
 }
@@ -458,6 +560,7 @@ function bindRailDragDrop() {
       event.preventDefault();
       const target = Number(car.dataset.railIndex);
       if (draggedIndex === null || draggedIndex === target) return;
+      recordUndoState();
       const [moved] = slides.splice(draggedIndex, 1);
       slides.splice(target, 0, moved);
       renderLayoutRail();
@@ -474,6 +577,7 @@ document.addEventListener("click", async event => {
   const button = event.target.closest("[data-category]");
   if (!button) return;
 
+  recordUndoState();
   const id = button.dataset.id;
   const category = button.dataset.category;
 
@@ -553,6 +657,7 @@ async function changeStep(direction) {
 document.getElementById("backgroundUpload").addEventListener("change", async event => {
   const file = event.target.files[0];
   if (!file) return;
+  recordUndoState();
 
   if (!file.type.startsWith("image/")) {
     notify("Pilih file gambar.");
@@ -874,7 +979,10 @@ function renderSlideEditor() {
   if (picture) {
     picture.addEventListener("change", async e => {
       const file = e.target.files[0];
-      if (file) slides[activeSlide].image = await readFile(file);
+      if (file) {
+        recordUndoState();
+        slides[activeSlide].image = await readFile(file);
+      }
     });
   }
 }
@@ -896,6 +1004,7 @@ function bindSlideDragDrop() {
       item.classList.remove("drag-over");
       const target = Number(item.dataset.slideIndex);
       if (dragged === null || dragged === target) return;
+      recordUndoState();
       const [moved] = slides.splice(dragged, 1);
       slides.splice(target, 0, moved);
       if (activeSlide === dragged) activeSlide = target;
@@ -913,6 +1022,7 @@ function selectSlide(index) {
 }
 
 function addSlide() {
+  recordUndoState();
   slides.push({
     title: "Slide Baru",
     subtitle: "",
@@ -930,6 +1040,7 @@ function deleteSlide() {
 
   if (!confirm("Hapus slide ini?")) return;
 
+  recordUndoState();
   slides.splice(activeSlide, 1);
   activeSlide = Math.max(0, activeSlide - 1);
   renderSlideEditor();
@@ -1080,6 +1191,8 @@ function makeProjectData() {
 
 async function saveProject(silent = false) {
   try {
+    const titleInput = document.getElementById("projectTitle");
+    if (titleInput && titleInput.value.trim()) projectTitle = titleInput.value.trim();
     const data = makeProjectData();
 
     await putOne("projects", data);
@@ -1114,7 +1227,7 @@ async function renderHistory() {
       <p>${project.slides.length} slide</p>
       <small>${new Date(project.updated).toLocaleString("id-ID")}</small>
       <div style="display:flex;gap:7px;margin-top:12px">
-        <button class="primary" onclick="openProject('${project.id}')">Buka</button>
+        <button class="primary" onclick="openProject('${project.id}')">Edit kembali</button>
         <button class="danger" onclick="deleteProject('${project.id}')">Hapus</button>
       </div>
     </div>
@@ -1126,18 +1239,19 @@ async function openProject(id) {
   if (!project) return notify("Proyek tidak ditemukan.");
 
   currentProjectId = project.id;
-  projectTitle = project.title;
+  projectTitle = project.title || "Presentasi Baru";
   slides = (project.slides || []).map(slide => ({ ...slide, layout: slide.layout || project.layout?.id || "left" }));
-  selectedBackground = project.background;
-  selectedElement = project.element;
-  selectedFont = project.font;
-  selectedLayout = project.layout;
+  selectedBackground = project.background || defaultBackgrounds[0];
+  selectedElement = project.element || defaultElements[0];
+  selectedFont = project.font || defaultFonts[0];
+  selectedLayout = project.layout || defaultLayouts[0];
+  undoStack = [];
+  redoStack = [];
+  updateHistoryButtons();
 
   await activateFont(selectedFont);
-
   document.getElementById("projectTitle").value = projectTitle;
-
-  finishProject();
+  openEditor();
 }
 
 async function deleteProject(id) {
@@ -1173,7 +1287,7 @@ async function renderHome() {
       <div class="color-sample">P</div>
       <h3>${escapeHTML(item.title)}</h3>
       <p>${item.slides.length} slide</p>
-      <button class="secondary" onclick="openProject('${item.id}')">Buka</button>
+      <button class="secondary" onclick="openProject('${item.id}')">Edit kembali</button>
     </div>
   `).join("") || '<div class="empty-state">Belum ada proyek tersimpan.</div>';
 }
@@ -1236,6 +1350,7 @@ document.addEventListener("keydown", event => {
 // ============================================
 
 async function downloadPPT() {
+  if (!slides.length) return notify("Tambahkan minimal satu slide sebelum mengunduh.");
   if (typeof pptxgen === "undefined") {
     return notify("Library PowerPoint belum termuat. Periksa koneksi internet.");
   }
@@ -1386,13 +1501,36 @@ async function downloadPPT() {
       });
     }
 
-    await pptx.writeFile({
-      fileName: `${projectTitle.replace(/[\\/:*?"<>|]/g,"-")}.pptx`
-    });
+    const safeTitle = (projectTitle || "Praktislide-Presentasi")
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .trim() || "Praktislide-Presentasi";
+    const fileName = `${safeTitle}.pptx`;
 
+    // Ambil Blob langsung lalu unduh dengan anchor agar kompatibel dengan Chrome Android.
+    const blob = await pptx.write({ outputType: "blob" });
+    if (!(blob instanceof Blob)) {
+      throw new Error("File PPTX tidak berhasil dibuat sebagai Blob.");
+    }
+
+    const typedBlob = new Blob([blob], {
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    });
+    const url = URL.createObjectURL(typedBlob);
+    const link = document.getElementById("pptxDownloadFallback");
+    if (!link) throw new Error("Tombol unduh cadangan tidak ditemukan.");
+    if (window.lastPptxObjectUrl) URL.revokeObjectURL(window.lastPptxObjectUrl);
+    window.lastPptxObjectUrl = url;
+    link.href = url;
+    link.download = fileName;
+    link.hidden = false;
+    link.textContent = `Unduh ${fileName}`;
+
+    // Coba mulai unduhan otomatis. Tautan tetap terlihat sebagai pilihan manual di HP.
+    link.click();
+    notify("File PPTX sudah disiapkan. Jika unduhan tidak mulai otomatis, tekan tautan unduh yang muncul di bawah tombol.");
   } catch (error) {
-    console.error(error);
-    notify("PPTX gagal dibuat. Periksa isi materi dan gambar.");
+    console.error("Ekspor PPTX gagal:", error);
+    notify(`PPTX gagal dibuat: ${error?.message || "Terjadi kesalahan"}. Pastikan koneksi internet aktif lalu coba lagi.`);
   }
 }
 
@@ -1407,6 +1545,7 @@ async function initialize() {
 
     await renderHome();
     await renderWizard();
+    updateHistoryButtons();
 
     console.log("Praktislide berhasil dijalankan.");
   } catch (error) {

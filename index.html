@@ -75,6 +75,10 @@
       <div class="step" data-step="3">04 <span>Susunan</span></div>
       <div class="step" data-step="4">05 <span>Isi</span></div>
     </div>
+    <div class="history-toolbar" aria-label="Riwayat perubahan">
+      <button class="secondary" id="undoButtonBuilder" onclick="undoAction()" disabled>↶ Urungkan</button>
+      <button class="secondary" id="redoButtonBuilder" onclick="redoAction()" disabled>↷ Ulangi</button>
+    </div>
 
     <!-- STEP 1 BACKGROUND -->
     <div class="wizard active" id="step0">
@@ -174,6 +178,12 @@
       <div class="step">01 <span>Background</span></div><div class="step">02 <span>Elemen</span></div><div class="step">03 <span>Font</span></div><div class="step">04 <span>Susunan</span></div><div class="step active">05 <span>Isi</span></div>
     </div>
 
+    <div class="history-toolbar" aria-label="Riwayat perubahan">
+      <button class="secondary" id="undoButton" onclick="undoAction()" disabled>↶ Urungkan</button>
+      <button class="secondary" id="redoButton" onclick="redoAction()" disabled>↷ Ulangi</button>
+      <button class="secondary" onclick="saveProject()">Simpan proyek</button>
+    </div>
+
     <div class="editor-grid">
       <aside class="slide-sidebar">
         <h3>Daftar slide</h3>
@@ -204,6 +214,12 @@
       </div>
     </div>
 
+    <div class="history-toolbar" aria-label="Riwayat perubahan">
+      <button class="secondary" id="undoButtonPreview" onclick="undoAction()" disabled>↶ Urungkan</button>
+      <button class="secondary" id="redoButtonPreview" onclick="redoAction()" disabled>↷ Ulangi</button>
+      <button class="secondary" onclick="openEditor()">✎ Edit proyek</button>
+    </div>
+
     <div class="preview-controls">
       <button class="secondary" onclick="movePreview(-1)">←</button>
       <span id="previewCounter">1 / 1</span>
@@ -215,7 +231,8 @@
     <div class="export-bar">
       <button class="secondary" onclick="saveProject()">Simpan proyek</button>
       <button class="secondary" onclick="startSlideshow()">Tampilkan layar penuh</button>
-      <button class="primary" onclick="downloadPPT()">↓ Download PPTX</button>
+      <button class="primary" id="downloadPptButton" onclick="downloadPPT()">↓ Download PPTX</button>
+      <a id="pptxDownloadFallback" class="secondary pptx-download-link" hidden>Unduh PPTX jika belum terunduh</a>
     </div>
   </section>
 

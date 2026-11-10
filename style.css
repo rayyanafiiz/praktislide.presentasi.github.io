@@ -14,6 +14,8 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body { max-width: 100%; overflow-x: clip; }
+
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--paper);
@@ -78,6 +80,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .page {
   display: none;
+  min-width: 0;
+  max-width: 100%;
   max-width: 1120px;
   margin: auto;
   padding: 45px 24px 75px;
@@ -248,6 +252,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .wizard {
   display: none;
+  min-width: 0;
+  max-width: 100%;
   background: white;
   border: 1px solid var(--line);
   padding: 27px;
@@ -613,7 +619,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 
 /* Builder susunan slide berbasis gerbong dan rel */
-.layout-builder { display: grid; gap: 28px; }
+.layout-builder { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; width: 100%; min-width: 0; max-width: 100%; }
+.layout-library, .layout-rail-section { min-width: 0; max-width: 100%; width: 100%; }
 .layout-library h3, .layout-rail-section h3 { font-size: 16px; }
 .layout-grid { margin-top: 14px; }
 .layout-choice { cursor: pointer; min-height: 205px; }
@@ -622,9 +629,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .layout-rail-section { border-top: 1px solid var(--line); padding-top: 22px; }
 .rail-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .rail-count { color: var(--red); background: var(--red-light); border-radius: 20px; padding: 7px 12px; font-size: 12px; font-weight: 800; white-space:nowrap; }
-.layout-rail { min-height: 116px; margin-top: 14px; padding: 18px; border: 2px dashed #d9b9b8; border-radius: 12px; background: repeating-linear-gradient(0deg,#fff 0,#fff 28px,#f8f2f1 29px,#f8f2f1 31px); display:flex; align-items:center; gap:12px; overflow-x:auto; }
-.rail-empty { width:100%; text-align:center; color:var(--muted); font-size:13px; padding:16px; }
-.rail-car { flex:0 0 170px; position:relative; background:white; border:1px solid #e7d7d5; border-bottom:5px solid #bd2633; border-radius:10px; padding:12px; box-shadow:0 3px 8px #2926260d; }
+.layout-rail { min-height: 116px; margin-top: 14px; padding: 18px; border: 2px dashed #d9b9b8; border-radius: 12px; background: repeating-linear-gradient(0deg,#fff 0,#fff 28px,#f8f2f1 29px,#f8f2f1 31px); display:flex; flex-wrap:nowrap; align-items:center; gap:12px; width:100%; min-width:0; max-width:100%; overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain; }
+.rail-empty { flex:1 0 100%; width:100%; min-width:0; text-align:center; color:var(--muted); font-size:13px; padding:16px; }
+.rail-car { min-width:0; flex:0 0 170px; position:relative; background:white; border:1px solid #e7d7d5; border-bottom:5px solid #bd2633; border-radius:10px; padding:12px; box-shadow:0 3px 8px #2926260d; }
 .rail-car strong { display:block; font-size:12px; margin:7px 0 4px; }
 .rail-car small { color:var(--muted); font-size:10px; }
 .rail-car-icon { height:38px; border-radius:6px; display:grid; place-items:center; background:#fff0ef; color:var(--red); font-size:22px; }
@@ -636,3 +643,20 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .file-control .file-clear { border:1px solid #f1d6d4; background:#fff2f1; color:#b62a34; border-radius:7px; padding:7px 10px; font-size:11px; font-weight:700; }
 .file-control .file-clear[hidden] { display:none; }
 @media(max-width:700px) { .layout-rail { align-items:stretch; } .rail-car { flex-basis:150px; } .rail-heading { align-items:flex-start; } }
+
+
+/* Tombol riwayat dan perbaikan lebar rel pada layar kecil */
+.history-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 20px; }
+.history-toolbar button:disabled { opacity:.42; cursor:not-allowed; }
+main { min-width:0; max-width:100%; }
+.layout-builder, .layout-builder * { min-width:0; }
+.layout-rail-section { overflow:hidden; }
+@media(max-width:700px) {
+  .layout-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .layout-rail { padding:12px; }
+  .rail-car { flex-basis:148px; }
+  .history-toolbar button { flex:1 1 auto; }
+}
+
+.pptx-download-link { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; font-weight:700; border:1px solid var(--red); color:var(--red); border-radius:8px; padding:11px 14px; background:#fff; }
+.pptx-download-link[hidden] { display:none; }
