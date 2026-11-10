@@ -1,0 +1,273 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Praktislide.Presentasi</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Library untuk membuat file PowerPoint -->
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+</head>
+<body>
+
+<header class="navbar">
+  <a href="#" class="logo" onclick="goHome()">
+    <span class="logo-icon">P</span>
+    Praktislide<span>.Presentasi</span>
+  </a>
+  <nav>
+    <button onclick="goHome()">Beranda</button>
+    <button onclick="showHistory()">Riwayat</button>
+    <button class="nav-create" onclick="startNew()">+ Buat Presentasi</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- BERANDA -->
+  <section id="home" class="page active">
+    <div class="hero">
+      <span class="eyebrow">PRESENTASI JADI PRAKTIS</span>
+      <h1>Buat presentasi.<br><span>Tanpa ribet.</span></h1>
+      <p>Pilih paket desain, masukkan materi, dan presentasimu siap digunakan.</p>
+      <button class="primary" onclick="startNew()">+ Buat Presentasi</button>
+    </div>
+
+    <section class="section">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">DESAIN PILIHAN</span>
+          <h2>Paket desain</h2>
+        </div>
+        <button class="secondary" onclick="showPackages()">Kelola paket</button>
+      </div>
+      <div id="homePackages" class="package-grid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">DOKUMEN</span>
+          <h2>Presentasi terakhir</h2>
+        </div>
+        <button class="secondary" onclick="showHistory()">Lihat semua</button>
+      </div>
+      <div id="recentProjects" class="package-grid"></div>
+    </section>
+  </section>
+
+  <!-- PEMBUAT PRESENTASI -->
+  <section id="builder" class="page">
+    <div class="page-heading">
+      <button class="back" onclick="goHome()">← Kembali</button>
+      <div>
+        <span class="eyebrow">PEMBUAT PRESENTASI</span>
+        <h1>Buat presentasimu</h1>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step active" data-step="0">01 <span>Background</span></div>
+      <div class="step" data-step="1">02 <span>Elemen</span></div>
+      <div class="step" data-step="2">03 <span>Font</span></div>
+      <div class="step" data-step="3">04 <span>Susunan</span></div>
+      <div class="step" data-step="4">05 <span>Isi</span></div>
+    </div>
+
+    <!-- STEP 1 BACKGROUND -->
+    <div class="wizard active" id="step0">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">LANGKAH 01</span>
+          <h2>Pilih background</h2>
+          <p>Pilih warna atau gambar latar.</p>
+        </div>
+      </div>
+      <div id="backgroundPackages" class="package-grid"></div>
+      <div class="upload-box">
+        <label for="backgroundUpload" class="secondary upload-label">+ Unggah gambar background</label>
+        <input type="file" id="backgroundUpload" accept="image/*">
+        <p>Gambar akan disesuaikan ke ukuran slide 16:9.</p>
+      </div>
+    </div>
+
+    <!-- STEP 2 TEMA -->
+    <div class="wizard" id="step1">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">LANGKAH 02</span>
+          <h2>Pilih elemen</h2>
+          <p>Pilih elemen dekoratif untuk presentasimu.</p>
+        </div>
+      </div>
+      <div id="elementPackages" class="package-grid"></div>
+      <button class="secondary" onclick="showPackages('elements')">+ Buat paket elemen sendiri</button>
+    </div>
+
+    <!-- STEP 3 FONT -->
+    <div class="wizard" id="step2">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">LANGKAH 03</span>
+          <h2>Pilih font</h2>
+          <p>Pilih kombinasi font untuk seluruh presentasi.</p>
+        </div>
+      </div>
+      <div id="fontPackages" class="package-grid"></div>
+      <button class="secondary" onclick="showPackages('fonts')">+ Buat paket font sendiri</button>
+    </div>
+
+    <!-- STEP 4 SUSUNAN -->
+    <div class="wizard" id="step3">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">LANGKAH 04</span>
+          <h2>Pilih susunan isi</h2>
+          <p>Pilih layout dan jumlah slide yang ingin dibuat. Setiap slide bisa diatur sendiri.</p>
+        </div>
+      </div>
+      <div class="layout-builder">
+        <div class="layout-library">
+          <h3>Pilihan gerbong</h3>
+          <p class="layout-hint">Klik gerbong untuk memasukkannya ke rel. Kamu boleh memilih gerbong yang sama berkali-kali.</p>
+          <div id="layoutPackages" class="layout-grid"></div>
+        </div>
+        <div class="layout-rail-section">
+          <div class="rail-heading">
+            <div>
+              <h3>Susunan slide kamu</h3>
+              <p class="layout-hint">Atur urutan gerbong menggunakan tombol panah atau seret.</p>
+            </div>
+            <span id="railCount" class="rail-count">0 slide</span>
+          </div>
+          <div id="layoutRail" class="layout-rail">
+            <div class="rail-empty">Rel masih kosong. Klik pilihan gerbong di atas untuk mulai menyusun.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-footer">
+      <button class="secondary" id="prevStep" onclick="changeStep(-1)" hidden>← Sebelumnya</button>
+      <button class="primary" id="nextStep" onclick="changeStep(1)">Selanjutnya →</button>
+    </div>
+  </section>
+
+  <!-- EDITOR MATERI -->
+  <section id="editor" class="page">
+    <div class="page-heading">
+      <button class="back" onclick="showPage('builder')">← Kembali</button>
+      <div>
+        <span class="eyebrow">PENGISIAN MATERI</span>
+        <h1>Masukkan materimu</h1>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Judul presentasi</label>
+      <input id="projectTitle" placeholder="Contoh: Sejarah Indonesia">
+    </div>
+
+    <div class="steps editor-steps">
+      <div class="step">01 <span>Background</span></div><div class="step">02 <span>Elemen</span></div><div class="step">03 <span>Font</span></div><div class="step">04 <span>Susunan</span></div><div class="step active">05 <span>Isi</span></div>
+    </div>
+
+    <div class="editor-grid">
+      <aside class="slide-sidebar">
+        <h3>Daftar slide</h3>
+        <p class="drag-hint">Geser kartu slide untuk mengubah urutan.</p>
+        <div id="slideList"></div>
+        <button class="secondary full" onclick="addSlide()">+ Tambah slide</button>
+      </aside>
+
+      <div class="editor-form">
+        <div id="contentFields"></div>
+        <button class="danger" onclick="deleteSlide()">Hapus slide</button>
+      </div>
+    </div>
+
+    <div class="wizard-footer">
+      <button class="secondary" onclick="showPage('builder')">← Ubah desain</button>
+      <button class="primary" onclick="finishProject()">Lihat presentasi →</button>
+    </div>
+  </section>
+
+  <!-- PREVIEW -->
+  <section id="preview" class="page">
+    <div class="page-heading">
+      <button class="back" onclick="showPage('editor')">← Kembali</button>
+      <div>
+        <span class="eyebrow">HASIL PRESENTASI</span>
+        <h1 id="previewTitle">Presentasimu</h1>
+      </div>
+    </div>
+
+    <div class="preview-controls">
+      <button class="secondary" onclick="movePreview(-1)">←</button>
+      <span id="previewCounter">1 / 1</span>
+      <button class="secondary" onclick="movePreview(1)">→</button>
+    </div>
+
+    <div id="slidePreview"></div>
+
+    <div class="export-bar">
+      <button class="secondary" onclick="saveProject()">Simpan proyek</button>
+      <button class="secondary" onclick="startSlideshow()">Tampilkan layar penuh</button>
+      <button class="primary" onclick="downloadPPT()">↓ Download PPTX</button>
+    </div>
+  </section>
+
+  <!-- RIWAYAT -->
+  <section id="history" class="page">
+    <div class="page-heading">
+      <button class="back" onclick="goHome()">← Beranda</button>
+      <div>
+        <span class="eyebrow">PENYIMPANAN</span>
+        <h1>Riwayat presentasi</h1>
+        <p>Proyek yang disimpan di perangkat ini.</p>
+      </div>
+    </div>
+    <div id="historyList" class="package-grid"></div>
+  </section>
+
+  <!-- KELOLA PAKET -->
+  <section id="packages" class="page">
+    <div class="page-heading">
+      <button class="back" onclick="goHome()">← Beranda</button>
+      <div>
+        <span class="eyebrow">PENGELOLAAN DESAIN</span>
+        <h1>Paket desain sendiri</h1>
+        <p>Setiap jenis paket disimpan secara terpisah.</p>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="selectPackageTab('backgrounds',this)">Background</button>
+      <button class="tab" onclick="selectPackageTab('elements',this)">Elemen</button>
+      <button class="tab" onclick="selectPackageTab('fonts',this)">Font</button>
+    </div>
+
+    <div id="packageManager"></div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <strong>Praktislide.Presentasi</strong>
+  <p>Presentasi jadi lebih praktis.</p>
+</footer>
+
+<!-- MODE PRESENTASI LAYAR PENUH -->
+<div id="presentationMode">
+  <button class="exit-fullscreen" onclick="stopSlideshow()">✕</button>
+  <button class="screen-prev" onclick="moveSlideshow(-1)">←</button>
+  <div id="fullscreenSlide"></div>
+  <button class="screen-next" onclick="moveSlideshow(1)">→</button>
+  <div class="screen-counter" id="screenCounter"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
